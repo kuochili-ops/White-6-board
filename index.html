@@ -3,38 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dog Message App - White6 Version</title>
+    <title>狗狗黑板訊息 App - 動態追蹤版</title>
     <style>
         :root {
-            --chalk-color: rgba(255, 255, 255, 0.9);
-            --chalk-font: 'Arial', sans-serif;
+            /* 粉筆質感顏色 */
+            --chalk-color: rgba(255, 255, 255, 0.88);
+            /* 模擬黑板晃動的基礎參數 */
+            --shake-intensity: 1.5px;
         }
 
         body {
             background-color: #000;
-            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: white;
+            margin: 0;
+            font-family: sans-serif;
+            overflow: hidden;
         }
 
-        /* 手機框架 */
         .phone-frame {
             position: relative;
             width: 360px;
             height: 640px;
-            border-radius: 36px;
-            border: 8px solid #222;
+            border-radius: 40px;
             overflow: hidden;
             background: #000;
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            box-shadow: 0 0 50px rgba(0,0,0,0.9);
         }
 
-        /* GitHub 影片背景 */
         #dogVideo {
             position: absolute;
             width: 100%;
@@ -43,43 +42,42 @@
             z-index: 1;
         }
 
-        /* 訊息覆蓋層 - 針對 White6.mp4 的黑板位置微調 */
-        .message-overlay {
+        /* 核心：黑板晃動追蹤容器 */
+        .chalkboard-sync-layer {
             position: absolute;
-            z-index: 2;
-            top: 73.5%; /* 精確對準狗狗叼著的黑板中心 */
+            z-index: 5;
+            top: 73%; 
             left: 50%;
-            transform: translate(-50%, -50%) rotate(-1deg);
-            width: 200px;
-            height: 80px;
+            width: 180px;
+            height: 60px;
+            pointer-events: none;
+            /* 這裡使用動畫模擬影片中黑板的微小晃動 */
+            animation: board-tracking 4s infinite ease-in-out;
             display: flex;
             justify-content: center;
             align-items: center;
-            pointer-events: none;
         }
 
-        /* 模組化 Flip-board 樣式 */
-        .flip-container {
+        /* 模擬黑板隨狗狗呼吸與動作的位移 */
+        @keyframes board-tracking {
+            0%, 100% { transform: translate(-50%, -50%) rotate(-1deg); }
+            25% { transform: translate(-50.5%, -49.5%) rotate(-1.5deg); }
+            50% { transform: translate(-49.5%, -50.5%) rotate(-0.5deg); }
+            75% { transform: translate(-50%, -51%) rotate(-1.2deg); }
+        }
+
+        /* 翻牌模組與粉筆字體質感 */
+        .flip-row {
             display: flex;
             gap: 2px;
+            /* 讓文字產生一點點透視感 */
+            transform: perspective(400px) rotateX(5deg);
         }
 
         .flip-unit {
             width: 20px;
             height: 32px;
             perspective: 200px;
-        }
-
-        .flip-card {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .flip-card.is-flipped {
-            transform: rotateX(-180deg);
         }
 
         .flip-face {
@@ -90,19 +88,21 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            font-weight: 800;
+            font-size: 20px;
+            font-weight: 700;
             color: var(--chalk-color);
-            text-shadow: 0 0 2px rgba(255,255,255,0.3);
+            /* 重要：加入粉筆雜訊濾鏡 */
+            filter: url(#chalk-filter) contrast(1.2);
+            font-family: 'Comic Sans MS', cursive; 
         }
 
+        .flip-card.is-flipped { transform: rotateX(-180deg); }
         .flip-face-back { transform: rotateX(180deg); }
 
-        /* UI 控制介面 */
-        .controls {
+        /* UI */
+        .app-ui {
             position: absolute;
-            bottom: 20px;
-            left: 0;
+            bottom: 30px;
             width: 100%;
             z-index: 10;
             display: flex;
@@ -111,76 +111,69 @@
             gap: 10px;
         }
 
-        .input-group {
-            display: flex;
+        .input-box {
+            width: 70%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.3);
             background: rgba(0,0,0,0.6);
-            padding: 8px 15px;
-            border-radius: 30px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        input {
-            background: transparent;
-            border: none;
             color: white;
-            padding: 5px;
-            outline: none;
-            width: 150px;
-            font-size: 14px;
+            text-align: center;
+            backdrop-filter: blur(5px);
         }
 
         button {
+            padding: 8px 25px;
             background: #fff;
-            color: #000;
-            border: none;
-            padding: 5px 15px;
             border-radius: 20px;
+            border: none;
             font-weight: bold;
             cursor: pointer;
-            transition: 0.2s;
         }
-
-        button:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
 
+    <svg style="display:none;">
+        <filter id="chalk-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" />
+        </filter>
+    </svg>
+
     <div class="phone-frame">
         <video id="dogVideo" autoplay loop muted playsinline>
-            <source src="https://raw.githubusercontent.com/您的GitHub用戶名/您的儲存庫/main/White6.mp4" type="video/mp4">
+            <source src="White6.mp4" type="video/mp4">
         </video>
 
-        <div class="message-overlay">
-            <div id="flip-board" class="flip-container"></div>
+        <div class="chalkboard-sync-layer">
+            <div id="flip-board" class="flip-row"></div>
         </div>
 
-        <div class="controls">
-            <div class="input-group">
-                <input type="text" id="msgInput" placeholder="輸入訊息..." maxlength="8">
-                <button onclick="updateBoard()">更新</button>
-            </div>
+        <div class="app-ui">
+            <input type="text" id="userInput" class="input-box" placeholder="寫點什麼..." maxlength="8">
+            <button onclick="handleUpdate()">寫上黑板</button>
         </div>
     </div>
 
     <script>
         /**
-         * FlipBoard 模組 (依據 2025-12-19 要求)
+         * FlipBoard 模組 (2025-12-19 要求)
          */
         const FlipBoard = (() => {
             const container = document.getElementById('flip-board');
-            const MAX_CHAR = 8;
-            let currentStr = new Array(MAX_CHAR).fill("");
+            const MAX = 8;
+            let currentStr = new Array(MAX).fill("");
 
             const init = () => {
                 container.innerHTML = "";
-                for(let i=0; i<MAX_CHAR; i++) {
+                for(let i=0; i<MAX; i++) {
                     const unit = document.createElement('div');
                     unit.className = 'flip-unit';
                     unit.innerHTML = `
-                        <div class="flip-card" id="s-${i}">
-                            <div class="flip-face flip-face-front"></div>
-                            <div class="flip-face flip-face-back"></div>
+                        <div class="flip-card" id="s-${i}" style="transform-style: preserve-3d; transition: transform 0.6s;">
+                            <div class="flip-face flip-face-front" style="position:absolute; width:100%; height:100%; backface-visibility:hidden;"></div>
+                            <div class="flip-face flip-face-back" style="position:absolute; width:100%; height:100%; backface-visibility:hidden; transform:rotateX(180deg);"></div>
                         </div>
                     `;
                     container.appendChild(unit);
@@ -188,7 +181,7 @@
             };
 
             const render = (text) => {
-                const chars = text.toUpperCase().padEnd(MAX_CHAR, " ").split("");
+                const chars = text.toUpperCase().padEnd(MAX, " ").split("");
                 chars.forEach((char, i) => {
                     if (char === currentStr[i]) return;
                     const card = document.getElementById(`s-${i}`);
@@ -203,7 +196,7 @@
                             back.textContent = char;
                             card.classList.add('is-flipped');
                         }
-                    }, i * 100);
+                    }, i * 60);
                 });
                 currentStr = chars;
             };
@@ -213,10 +206,10 @@
 
         // 啟動
         FlipBoard.init();
-        setTimeout(() => FlipBoard.render("LOVE YOU"), 1500);
+        setTimeout(() => FlipBoard.render("HI! DOG"), 1000);
 
-        function updateBoard() {
-            const val = document.getElementById('msgInput').value;
+        function handleUpdate() {
+            const val = document.getElementById('userInput').value;
             FlipBoard.render(val);
         }
     </script>
