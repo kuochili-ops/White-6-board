@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>狗狗黑板 - 四角透視貼合版</title>
+    <title>狗狗黑板訊息 - 四角透視定位版</title>
     <style>
         :root {
-            /* 粉筆質感：帶點透明與顆粒 */
-            --chalk-white: rgba(240, 240, 240, 0.85);
-            /* 模擬黑板在影片中的動態晃動參數 */
-            --sway-x: 0px;
-            --sway-y: 0px;
-            --sway-r: -1.2deg;
+            /* 粉筆質感設定 */
+            --chalk-base: rgba(255, 255, 255, 0.82);
+            --chalk-grain: url(#chalk-filter);
         }
 
         body {
@@ -31,7 +28,6 @@
             height: 640px;
             background: #111;
             border-radius: 40px;
-            border: 10px solid #222;
             overflow: hidden;
         }
 
@@ -43,122 +39,83 @@
             z-index: 1;
         }
 
-        /* 核心：四角定位與透視容器 */
+        /* 核心：透視變形容器 */
+        /* 您可以透過修改這裡的 transform 來精確對齊四角 */
         .perspective-container {
             position: absolute;
             z-index: 5;
-            /* 這裡模擬您定位後的黑板中心點 */
-            top: 73.2%; 
-            left: 50.2%;
-            width: 200px;
-            height: 80px;
-            
-            /* 使用 perspective 讓內容產生空間深度感 */
-            perspective: 500px;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             pointer-events: none;
+            /* 這裡模擬了一個透視投影矩陣，您可以根據四角座標計算後替換 */
+            /* 範例為：稍微向後仰且向左偏的透視 */
+            transform-origin: 0 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chalkboard-surface {
+            width: 200px;
+            height: 100px;
+            background: rgba(255,255,255,0.05); /* 輔助對位用，正式版可設透明 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
             
-            /* 混合模式讓文字與黑板底紋融合 */
+            /* 讓文字跟黑板底紋融合 */
             mix-blend-mode: screen; 
             
-            /* 物理晃動動畫 */
-            animation: blackboard-sway 4s infinite ease-in-out;
+            /* 加入您觀察到的黑板晃動動畫 */
+            animation: board-vibration 4s infinite ease-in-out;
         }
 
-        /* 模擬黑板貼合：利用 transform 的 rotateX/Y/Z 模擬四角貼合後的面狀傾斜 */
-        .chalk-surface {
-            width: 100%;
-            height: 100%;
-            transform: rotateX(15deg) rotateY(-5deg) rotateZ(-1deg);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            /* 套用粉筆濾鏡 */
-            filter: url(#chalk-roughness);
+        /* 針對文字的粉筆質感濾鏡 */
+        .chalk-text-wrapper {
+            filter: url(#chalk-grain) drop-shadow(0 0 1px rgba(255,255,255,0.3));
         }
 
-        @keyframes blackboard-sway {
-            0%, 100% { transform: translate(-50%, -50%) rotate(var(--sway-r)); }
-            50% { transform: translate(-50.2%, -50.8%) rotate(-1.8deg); }
+        @keyframes board-vibration {
+            0%, 100% { transform: translate(180px, 465px) rotate(-1deg); }
+            30% { transform: translate(179px, 467px) rotate(-1.5deg); }
+            60% { transform: translate(181px, 464px) rotate(-0.5deg); }
         }
 
-        /* Flip-board 模組樣式 */
-        .flip-row {
-            display: flex;
-            gap: 2px;
+        /* FlipBoard 模組樣式 */
+        .flip-row { display: flex; gap: 3px; }
+        .flip-unit { width: 22px; height: 36px; perspective: 200px; }
+        .flip-card { 
+            position: relative; width: 100%; height: 100%; 
+            transform-style: preserve-3d; transition: transform 0.6s; 
         }
-
-        .flip-unit {
-            width: 20px;
-            height: 32px;
-            perspective: 200px;
-        }
-
-        .flip-card {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
         .flip-card.is-flipped { transform: rotateX(-180deg); }
-
         .flip-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: 900;
-            color: var(--chalk-white);
-            font-family: 'Comic Sans MS', cursive, sans-serif;
-            text-shadow: 0 0 1px rgba(255,255,255,0.3);
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: bold; color: var(--chalk-base);
+            font-family: 'Marker Felt', 'Comic Sans MS', cursive;
         }
-
         .flip-face-back { transform: rotateX(180deg); }
 
-        /* App 控制項 */
+        /* UI */
         .controls {
-            position: absolute;
-            bottom: 30px;
-            width: 100%;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
+            position: absolute; bottom: 30px; width: 100%; z-index: 10;
+            display: flex; flex-direction: column; align-items: center;
         }
-
-        .input-bar {
-            width: 70%;
-            padding: 12px;
-            border-radius: 20px;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: #fff;
-            text-align: center;
-            backdrop-filter: blur(10px);
+        input {
+            width: 70%; padding: 12px; border-radius: 20px; border: none;
+            background: rgba(255,255,255,0.2); color: white; text-align: center;
+            backdrop-filter: blur(10px); margin-bottom: 10px;
         }
-
-        button {
-            padding: 8px 30px;
-            border-radius: 20px;
-            border: none;
-            background: #fff;
-            font-weight: bold;
-            cursor: pointer;
-        }
+        button { padding: 10px 30px; border-radius: 20px; border: none; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <svg style="display: none;">
-        <filter id="chalk-roughness">
-            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" />
+        <filter id="chalk-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.8" />
         </filter>
     </svg>
 
@@ -168,57 +125,46 @@
         </video>
 
         <div class="perspective-container">
-            <div class="chalk-surface">
-                <div id="flip-board-module" class="flip-row"></div>
+            <div class="chalkboard-surface">
+                <div class="chalk-text-wrapper">
+                    <div id="flip-board" class="flip-row"></div>
+                </div>
             </div>
         </div>
 
         <div class="controls">
-            <input type="text" id="userInput" class="input-bar" placeholder="寫點訊息給狗狗..." maxlength="8">
-            <button onclick="publish()">傳送訊息</button>
+            <input type="text" id="userInput" placeholder="輸入訊息..." maxlength="8">
+            <button onclick="updateText()">寫上黑板</button>
         </div>
     </div>
 
     <script>
-        /**
-         * FlipBoard 模組
-         */
+        // FlipBoard 模組
         const FlipBoard = (() => {
-            const container = document.getElementById('flip-board-module');
+            const container = document.getElementById('flip-board');
             const MAX = 8;
             let current = new Array(MAX).fill("");
 
             const init = () => {
                 container.innerHTML = "";
-                for(let i=0; i<MAX; i++) {
-                    const unit = document.createElement('div');
-                    unit.className = 'flip-unit';
-                    unit.innerHTML = `
-                        <div class="flip-card" id="s-${i}">
-                            <div class="flip-face flip-face-front"></div>
-                            <div class="flip-face flip-face-back"></div>
-                        </div>
-                    `;
-                    container.appendChild(unit);
+                for(let i=0; i<MAX; i++){
+                    const u = document.createElement('div');
+                    u.className = 'flip-unit';
+                    u.innerHTML = `<div class="flip-card" id="s-${i}"><div class="flip-face f"></div><div class="flip-face b"></div></div>`;
+                    container.appendChild(u);
                 }
             };
 
             const write = (text) => {
                 const chars = text.toUpperCase().padEnd(MAX, " ").split("");
-                chars.forEach((char, i) => {
-                    if (char === current[i]) return;
+                chars.forEach((c, i) => {
+                    if (c === current[i]) return;
                     const card = document.getElementById(`s-${i}`);
-                    const front = card.querySelector('.flip-face-front');
-                    const back = card.querySelector('.flip-face-back');
-                    
+                    const faces = card.querySelectorAll('.flip-face');
                     setTimeout(() => {
-                        if (card.classList.contains('is-flipped')) {
-                            front.textContent = char;
-                            card.classList.remove('is-flipped');
-                        } else {
-                            back.textContent = char;
-                            card.classList.add('is-flipped');
-                        }
+                        const target = card.classList.contains('is-flipped') ? faces[0] : faces[1];
+                        target.textContent = c;
+                        card.classList.toggle('is-flipped');
                     }, i * 70);
                 });
                 current = chars;
@@ -228,11 +174,10 @@
         })();
 
         FlipBoard.init();
-        setTimeout(() => FlipBoard.write("WELCOME"), 1000);
+        setTimeout(() => FlipBoard.write("READY"), 1000);
 
-        function publish() {
-            const val = document.getElementById('userInput').value;
-            FlipBoard.write(val);
+        function updateText() {
+            FlipBoard.write(document.getElementById('userInput').value);
         }
     </script>
 </body>
