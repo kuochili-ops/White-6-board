@@ -3,151 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>狗狗黑板 - 最終修正</title>
+    <title>狗狗黑板 - 3D 穩定版</title>
     <style>
         body { background: #000; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        .phone-frame { position: relative; width: 100vw; height: 100vh; max-width: 450px; max-height: 800px; overflow: hidden; background: #000; }
+        .phone-frame { position: relative; width: 100vw; height: 100vh; max-width: 450px; max-height: 800px; overflow: hidden; background: #000; perspective: 1000px; }
         
         #v { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
         
-        /* 文字層：確保 z-index 高於影片 */
-        #inner-text {
-            position: absolute; width: 400px; height: 200px; 
-            top: 0; left: 0; z-index: 50; pointer-events: none;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; text-align: center;
-            font-size: 36px; transform-origin: 0 0;
-            text-shadow: 0 0 5px rgba(0,0,0,0.5);
-            mix-blend-mode: screen; 
-        }
-
-        /* --- 核心修正：NHK 獨立容器，不放在 admin-ui 裡面 --- */
-        #nhk-end {
-            position: absolute; bottom: 50px; right: 25px; 
-            z-index: 100; /* 確保高於影片 */
-            color: white; font-weight: bold; 
-            opacity: 0; transition: opacity 0.4s; pointer-events: none;
-            display: flex; align-items: flex-end; gap: 8px;
-        }
-        .nhk-logo { border: 2.5px solid white; padding: 2px 8px; font-size: 24px; line-height: 1.1; }
-        .nhk-final { font-size: 38px; font-style: italic; margin-right: 5px; }
-
-        .admin-ui { position: absolute; bottom: 30px; width: 100%; z-index: 150; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        /* 僅隱藏控制介面，不影響 NHK */
-        body.viewer-mode .admin-ui { display: none !important; }
-        
-        input { padding: 15px; border-radius: 12px; border: none; width: 85%; text-align: center; font-size: 16px; }
-        button { padding: 12px 24px; border-radius: 10px; border: none; font-weight: bold; background: #007AFF; color: white; cursor: pointer; }
-        
-        /* 收訊者提示點擊 */
-        #click-hint {
+        /* 3D 文字容器：這是關鍵 */
+        #text-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 200; background: rgba(0,0,0,0.4); color: white;
-            display: none; align-items: center; justify-content: center; flex-direction: column;
+            z-index: 5; pointer-events: none; transform-style: preserve-3d;
         }
-        body.viewer-mode #click-hint { display: flex; }
+
+        #inner-text {
+            position: absolute; width: 200px; height: 100px; /* 基礎大小 */
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.9); font-weight: bold; text-align: center;
+            font-size: 24px; line-height: 1.2; transform-origin: 0 0;
+            text-shadow: 0 0 2px rgba(0,0,0,0.3);
+            filter: blur(0.3px) brightness(1.2);
+            mix-blend-mode: screen;
+        }
+
+        #nhk-end {
+            position: absolute; bottom: 50px; right: 25px; z-index: 9999;
+            color: white; font-weight: bold; opacity: 0; transition: opacity 0.4s;
+            display: flex; align-items: flex-end; gap: 8px; pointer-events: none;
+        }
+        .nhk-logo { border: 2.5px solid white; padding: 2px 8px; font-size: 24px; }
+        .nhk-final { font-size: 38px; font-style: italic; }
+
+        .admin-ui { position: absolute; bottom: 30px; width: 100%; z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        body.viewer-mode .admin-ui { display: none; }
+        input { padding: 12px; border-radius: 8px; width: 80%; }
+        .btn-row { display: flex; gap: 10px; }
+        button { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; }
+        #toast { position: fixed; top: 20px; background: #32D74B; color: white; padding: 10px; border-radius: 10px; opacity: 0; z-index: 10000; }
     </style>
 </head>
-<body>
+<body class="admin-mode">
 
-<div class="phone-frame">
-    <video id="v" src="White6.mp4" autoplay loop muted playsinline></video>
-    
-    <div id="inner-text"></div>
+    <div id="toast">✅ 連結已複製</div>
 
-    <div id="nhk-end">
-        <span class="nhk-final">終</span>
-        <div style="text-align:right">
-            <div style="font-size:14px">制作・著作</div>
-            <div class="nhk-logo">ＮＨＫ</div>
+    <div class="phone-frame">
+        <video id="v" src="White6.mp4" autoplay loop muted playsinline></video>
+        
+        <div id="text-overlay">
+            <div id="inner-text"></div>
+        </div>
+
+        <div id="nhk-end">
+            <span class="nhk-final">終</span>
+            <div style="text-align:right">
+                <div style="font-size:14px">制作・著作</div>
+                <div class="nhk-logo">ＮＨＫ</div>
+            </div>
+        </div>
+
+        <div class="admin-ui">
+            <input type="text" id="userInput" value="Minnie 2026 新年快樂">
+            <div class="btn-row">
+                <button onclick="updatePreview()">預覽</button>
+                <button onclick="shareAndCopy()" style="background:#007AFF;color:#white">分享連結</button>
+            </div>
         </div>
     </div>
 
-    <div class="admin-ui">
-        <input type="text" id="userInput" value="Minnie 2026 新年快樂">
-        <button onclick="updatePreview()">預覽</button>
-        <button onclick="shareLink()" style="background:#32D74B; margin-top:5px;">分享連結</button>
-    </div>
-
-    <div id="click-hint" onclick="startViewer()">
-        <p style="font-size: 20px;">🔊 點擊螢幕開啟祝福</p>
-    </div>
-</div>
-
 <script>
     const v = document.getElementById('v');
-    const textDiv = document.getElementById('inner-text');
+    const textLayer = document.getElementById('inner-text');
     const nhkEnd = document.getElementById('nhk-end');
     const inputField = document.getElementById('userInput');
 
-    // 請記得在此處保留你原本長度 3.64 到 6.04 的 trackingData
-    const trackingData = {"3.64":[{"x":"0.1071","y":"0.6915"},{"x":"0.9238","y":"0.6809"},{"x":"0.9238","y":"0.9468"},{"x":"0.1905","y":"0.9839"}],"6.04":[{"x":"0.2429","y":"0.6651"},{"x":"0.8929","y":"0.6347"},{"x":"0.9000","y":"0.8503"},{"x":"0.2929","y":"0.8741"}]};
+    // 完整的追蹤數據 (請確保填入全部 3.64 到 6.04 的座標)
+    const trackingData = {"3.64":[{"x":"0.1071","y":"0.6915"},{"x":"0.9238","y":"0.6809"},{"x":"0.9238","y":"0.9468"},{"x":"0.1905","y":"0.9839"}],"6.04":[{"x":"0.2429","y":"0.6651"},{"x":"0.8929","y":"0.6347"},{"x":"0.9000","y":"0.8503"},{"x":"0.2929","y":"0.8741"}]}; 
 
     const keys = Object.keys(trackingData).map(Number).sort((a,b)=>a-b);
 
-    // 矩陣計算
+    // --- 矩陣計算引擎：將 4 個點轉換為 CSS Matrix3d ---
     function getMatrix3d(subs, refs) {
-        function adj(m) { return [m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4], m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5], m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3]]; }
-        function mult(a, b) { let res = new Array(9).fill(0); for(let i=0; i<3; i++) for(let j=0; j<3; j++) for(let k=0; k<3; k++) res[i*3+j] += a[i*3+k]*b[k*3+j]; return res; }
-        function bToP(x1, y1, x2, y2, x3, y3, x4, y4) { let m = [x1, x2, x3, y1, y2, y3, 1, 1, 1]; let v = mult(adj(m), [x4, y4, 1]); return mult(m, [v[0], 0, 0, 0, v[1], 0, 0, 0, v[2]]); }
-        let s = bToP(...subs), d = bToP(...refs), m = mult(d, adj(s));
+        function adj(m) {
+            return [
+                m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4],
+                m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5],
+                m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3]
+            ];
+        }
+        function mult(a, b) {
+            let res = new Array(9).fill(0);
+            for(let i=0; i<3; i++) for(let j=0; j<3; j++) for(let k=0; k<3; k++) res[i*3+j] += a[i*3+k]*b[k*3+j];
+            return res;
+        }
+        function basisToPoints(x1, y1, x2, y2, x3, y3, x4, y4) {
+            let m = [x1, x2, x3, y1, y2, y3, 1, 1, 1];
+            let v = mult(adj(m), [x4, y4, 1]);
+            return mult(m, [v[0], 0, 0, 0, v[1], 0, 0, 0, v[2]]);
+        }
+        let s = basisToPoints(...subs), d = basisToPoints(...refs);
+        let m = mult(d, adj(s));
         for(let i=0; i<9; i++) m[i] /= m[8];
         return [m[0], m[3], 0, m[6], m[1], m[4], 0, m[7], 0, 0, 1, 0, m[2], m[5], 0, 1];
     }
 
-    function animate() {
+    function updateFrame() {
         const cur = v.currentTime;
-        // 固定在 4.8 秒出現 NHK
+        
+        // NHK 顯示
         nhkEnd.style.opacity = (cur >= 4.8 && cur < 6.0) ? '1' : '0';
 
+        // 取得當前座標
         let idx = keys.findIndex(k => k > cur) - 1;
         if (idx >= 0 && keys[idx+1]) {
-            const t1 = keys[idx], t2 = keys[idx+1], r = (cur - t1) / (t2 - t1);
+            const t1 = keys[idx], t2 = keys[idx+1];
+            const r = (cur - t1) / (t2 - t1);
             const p1 = trackingData[t1], p2 = trackingData[t2];
             
-            const width = v.clientWidth || 375; // 預防寬度讀取為 0
-            const height = v.clientHeight || 667;
-
             const pts = p1.map((p, i) => ({
-                x: (parseFloat(p.x) + (parseFloat(p2[i].x) - parseFloat(p.x)) * r) * width,
-                y: (parseFloat(p.y) + (parseFloat(p2[i].y) - parseFloat(p.y)) * r) * height
+                x: (parseFloat(p.x) + (parseFloat(p2[i].x) - parseFloat(p.x)) * r) * v.clientWidth,
+                y: (parseFloat(p.y) + (parseFloat(p2[i].y) - parseFloat(p.y)) * r) * v.clientHeight
             }));
 
+            // 將文字 4 角對齊黑板 4 角
             const matrix = getMatrix3d(
-                [0, 0, 400, 0, 0, 200, 400, 200], 
-                [pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[3].x, pts[3].y, pts[2].x, pts[2].y]
+                [0, 0, 200, 0, 0, 100, 200, 100], // 原始文字框四角
+                [pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[3].x, pts[3].y, pts[2].x, pts[2].y] // 影片中黑板四角
             );
-            textDiv.style.transform = `matrix3d(${matrix.join(',')})`;
-            textDiv.innerText = inputField.value;
-            textDiv.style.visibility = 'visible';
+            textLayer.style.transform = `matrix3d(${matrix.join(',')})`;
+            textLayer.innerText = inputField.value;
+            textLayer.style.display = 'flex';
         } else {
-            textDiv.style.visibility = 'hidden';
+            textLayer.style.display = 'none';
         }
-        requestAnimationFrame(animate);
+        requestAnimationFrame(updateFrame);
     }
 
-    // 收訊者點擊後啟動
-    function startViewer() {
-        document.getElementById('click-hint').style.display = 'none';
-        v.muted = false;
-        v.play();
-        animate();
-    }
-
-    // 初始化模式判斷
+    // 初始化與模式判斷
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('text')) {
         inputField.value = decodeURIComponent(urlParams.get('text'));
         document.body.classList.add('viewer-mode');
-    } else {
-        animate(); // 管理員模式直接執行
     }
 
-    function updatePreview() { v.currentTime = 0; v.play(); }
-    function shareLink() {
+    function shareAndCopy() {
         const url = `${window.location.origin}${window.location.pathname}?text=${encodeURIComponent(inputField.value)}`;
-        navigator.clipboard.writeText(url).then(() => alert("連結已複製，請分享給收訊者！"));
+        navigator.clipboard.writeText(url).then(() => {
+            const t = document.getElementById('toast');
+            t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2000);
+        });
     }
+
+    v.onplay = () => updateFrame();
 </script>
 </body>
 </html>
