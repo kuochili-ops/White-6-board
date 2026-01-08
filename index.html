@@ -3,180 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>狗狗黑板 - 最終修正版</title>
+    <title>狗狗黑板 - 3D 座標鎖死版</title>
     <style>
-        body { background: #000; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: -apple-system, "Microsoft JhengHei", sans-serif; }
-        .phone-frame { position: relative; width: 100vw; height: 100vh; max-width: 450px; max-height: 800px; background: #000; overflow: hidden; }
+        body { background: #000; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        .phone-frame { position: relative; width: 100vw; height: 100vh; max-width: 450px; max-height: 800px; overflow: hidden; background: #000; perspective: 1000px; }
         #v { position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
-        #drawingCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; mix-blend-mode: screen; filter: blur(0.3px) brightness(1.2); }
+        
+        /* 文字層：使用 3D 變形 */
+        #text-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none; transform-style: preserve-3d;
+        }
+        #inner-text {
+            position: absolute; width: 300px; height: 150px; /* 參考尺寸 */
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.95); font-weight: bold; text-align: center;
+            font-size: 32px; transform-origin: 0 0;
+            mix-blend-mode: screen; filter: blur(0.3px) brightness(1.2);
+        }
 
-        /* 強制顯示 NHK：不受 admin-ui 影響 */
+        /* NHK 標誌：最高層級，強制顯示 */
         #nhk-end {
-            position: absolute; bottom: 50px; right: 25px; 
-            z-index: 9999 !important; /* 最高層級 */
-            color: white; font-weight: bold; font-family: "serif", "SimSun", "PMingLiU", serif;
-            opacity: 0; transition: opacity 0.4s ease-in-out; pointer-events: none;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.9); display: flex; align-items: flex-end; gap: 8px;
+            position: absolute; bottom: 50px; right: 25px; z-index: 9999 !important;
+            color: white; font-weight: bold; opacity: 0; transition: opacity 0.4s;
+            display: flex; align-items: flex-end; gap: 8px; pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
-        .nhk-logo { border: 2.5px solid white; padding: 2px 8px; font-size: 24px; line-height: 1.1; letter-spacing: 2px; }
-        .nhk-text { font-size: 15px; padding-bottom: 2px; letter-spacing: 1px; line-height: 1.2; text-align: right; }
-        .nhk-final { font-size: 38px; margin-right: 5px; font-style: italic; }
+        .nhk-logo { border: 2.5px solid white; padding: 2px 8px; font-size: 24px; line-height: 1.1; }
+        .nhk-final { font-size: 38px; font-style: italic; margin-right: 5px; }
 
-        .admin-ui {
-            position: absolute; bottom: 30px; width: 100%; z-index: 100;
-            display: flex; flex-direction: column; align-items: center; gap: 12px;
-            background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding-bottom: 20px;
-        }
+        .admin-ui { position: absolute; bottom: 30px; width: 100%; z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 12px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding-bottom: 20px;}
+        body.viewer-mode .admin-ui { visibility: hidden; } /* 使用 visibility 確保不影響其他元素 */
         
-        /* 確保收訊者模式只隱藏輸入框，不影響 NHK */
-        body.viewer-mode .admin-ui { visibility: hidden; pointer-events: none; }
-        
-        input { padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: rgba(20,20,20,0.9); color: #fff; text-align: center; width: 85%; font-size: 16px; outline: none; }
-        .btn-row { display: flex; gap: 10px; width: 88%; }
-        button { flex: 1; padding: 14px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-size: 14px; }
-        .confirm-btn { background: #ffffff; color: #000; }
-        .share-btn { background: #007AFF; color: #fff; }
-        #toast { position: fixed; top: 40px; background: #32D74B; color: #fff; padding: 10px 25px; border-radius: 20px; font-weight: bold; opacity: 0; transition: opacity 0.3s; z-index: 10000; }
+        input { padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: rgba(20,20,20,0.9); color: #fff; width: 85%; text-align: center; }
+        button { padding: 12px 24px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
+        #toast { position: fixed; top: 40px; background: #32D74B; color: white; padding: 10px 25px; border-radius: 20px; opacity: 0; transition: opacity 0.3s; z-index: 10000; }
     </style>
 </head>
 <body class="admin-mode">
 
-    <div id="toast">✅ 連結已複製</div>
+<div id="toast">✅ 連結已複製</div>
 
-    <div class="phone-frame">
-        <video id="v" src="White6.mp4" autoplay loop muted playsinline></video>
-        <canvas id="drawingCanvas"></canvas>
+<div class="phone-frame">
+    <video id="v" src="White6.mp4" autoplay loop muted playsinline></video>
+    
+    <div id="text-overlay">
+        <div id="inner-text"></div>
+    </div>
 
-        <div id="nhk-end">
-            <span class="nhk-final">終</span>
-            <div>
-                <div class="nhk-text">制作・著作</div>
-                <div class="nhk-logo">ＮＨＫ</div>
-            </div>
-        </div>
-
-        <div class="admin-ui">
-            <input type="text" id="userInput" value="Minnie 2026 新年快樂" placeholder="輸入訊息...">
-            <div class="btn-row">
-                <button class="confirm-btn" onclick="updatePreview()">預覽</button>
-                <button class="share-btn" onclick="shareAndCopy()">分享</button>
-            </div>
+    <div id="nhk-end">
+        <span class="nhk-final">終</span>
+        <div style="text-align:right">
+            <div style="font-size:14px">制作・著作</div>
+            <div class="nhk-logo">ＮＨＫ</div>
         </div>
     </div>
 
+    <div class="admin-ui">
+        <input type="text" id="userInput" value="Minnie 2026 新年快樂">
+        <div style="display:flex; gap:10px; width:88%">
+            <button onclick="updatePreview()" style="flex:1; background:white;">預覽</button>
+            <button onclick="shareAndCopy()" style="flex:1; background:#007AFF; color:white;">分享連結</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const v = document.getElementById('v');
-    const canvas = document.getElementById('drawingCanvas');
+    const textDiv = document.getElementById('inner-text');
     const nhkEnd = document.getElementById('nhk-end');
-    const ctx = canvas.getContext('2d');
     const inputField = document.getElementById('userInput');
-    
-    let currentText = inputField.value;
 
+    // 完整的追蹤數據
+    const trackingData = {"3.64":[{"x":"0.1071","y":"0.6915"},{"x":"0.9238","y":"0.6809"},{"x":"0.9238","y":"0.9468"},{"x":"0.1905","y":"0.9839"}],"3.68":[{"x":"0.1619","y":"0.6955"},{"x":"0.8881","y":"0.6809"},{"x":"0.8833","y":"0.9190"},{"x":"0.1881","y":"0.9429"}],"3.71":[{"x":"0.1381","y":"0.6862"},{"x":"0.8548","y":"0.6624"},{"x":"0.8286","y":"0.8833"},{"x":"0.1929","y":"0.9230"}],"3.74":[{"x":"0.1429","y":"0.6770"},{"x":"0.8595","y":"0.6598"},{"x":"0.8500","y":"0.8820"},{"x":"0.1905","y":"0.9257"}],"3.78":[{"x":"0.1452","y":"0.6902"},{"x":"0.8476","y":"0.6585"},{"x":"0.8095","y":"0.8608"},{"x":"0.1881","y":"0.9018"}],"3.81":[{"x":"0.1452","y":"0.6717"},{"x":"0.8190","y":"0.6347"},{"x":"0.7857","y":"0.8423"},{"x":"0.1905","y":"0.8913"}],"3.84":[{"x":"0.1262","y":"0.6823"},{"x":"0.8024","y":"0.6518"},{"x":"0.7857","y":"0.8278"},{"x":"0.1833","y":"0.8820"}],"3.88":[{"x":"0.1667","y":"0.6809"},{"x":"0.8000","y":"0.6267"},{"x":"0.7500","y":"0.7987"},{"x":"0.2167","y":"0.8595"}],"3.91":[{"x":"0.1333","y":"0.6796"},{"x":"0.7976","y":"0.6188"},{"x":"0.7905","y":"0.8079"},{"x":"0.1952","y":"0.8675"}],"3.94":[{"x":"0.2000","y":"0.6664"},{"x":"0.8095","y":"0.6201"},{"x":"0.7762","y":"0.7775"},{"x":"0.2119","y":"0.8595"}],"3.98":[{"x":"0.2024","y":"0.6598"},{"x":"0.8024","y":"0.6148"},{"x":"0.7738","y":"0.7828"},{"x":"0.2071","y":"0.8436"}],"4.01":[{"x":"0.1929","y":"0.6558"},{"x":"0.8119","y":"0.6082"},{"x":"0.7786","y":"0.7722"},{"x":"0.2238","y":"0.8265"}],"4.04":[{"x":"0.2024","y":"0.6452"},{"x":"0.8143","y":"0.6042"},{"x":"0.7976","y":"0.7762"},{"x":"0.2452","y":"0.8198"}],"4.08":[{"x":"0.1952","y":"0.6452"},{"x":"0.8214","y":"0.6042"},{"x":"0.8000","y":"0.7735"},{"x":"0.2381","y":"0.8225"}],"4.11":[{"x":"0.2048","y":"0.6399"},{"x":"0.8310","y":"0.6161"},{"x":"0.8095","y":"0.7868"},{"x":"0.2357","y":"0.8145"}],"4.14":[{"x":"0.2143","y":"0.6320"},{"x":"0.8429","y":"0.6201"},{"x":"0.8405","y":"0.8040"},{"x":"0.2643","y":"0.8093"}],"4.18":[{"x":"0.2262","y":"0.6254"},{"x":"0.8571","y":"0.6227"},{"x":"0.8595","y":"0.8119"},{"x":"0.2667","y":"0.8093"}],"4.21":[{"x":"0.2238","y":"0.6201"},{"x":"0.8619","y":"0.6267"},{"x":"0.9048","y":"0.8331"},{"x":"0.2929","y":"0.8066"}],"4.24":[{"x":"0.2238","y":"0.6201"},{"x":"0.8810","y":"0.6227"},{"x":"0.8714","y":"0.8370"},{"x":"0.2952","y":"0.8106"}],"4.28":[{"x":"0.2333","y":"0.6161"},{"x":"0.8738","y":"0.6307"},{"x":"0.8857","y":"0.8463"},{"x":"0.2952","y":"0.8119"}],"4.31":[{"x":"0.2524","y":"0.6108"},{"x":"0.8714","y":"0.6307"},{"x":"0.9167","y":"0.8714"},{"x":"0.3071","y":"0.8145"}],"4.34":[{"x":"0.2524","y":"0.6095"},{"x":"0.8690","y":"0.6347"},{"x":"0.9119","y":"0.8714"},{"x":"0.3095","y":"0.8172"}],"4.38":[{"x":"0.2429","y":"0.6042"},{"x":"0.8690","y":"0.6294"},{"x":"0.8786","y":"0.8939"},{"x":"0.3095","y":"0.8159"}],"4.41":[{"x":"0.2643","y":"0.6056"},{"x":"0.8738","y":"0.6294"},{"x":"0.8833","y":"0.8860"},{"x":"0.3048","y":"0.8185"}],"4.44":[{"x":"0.2619","y":"0.5936"},{"x":"0.8643","y":"0.6373"},{"x":"0.8881","y":"0.8913"},{"x":"0.3000","y":"0.8198"}],"4.48":[{"x":"0.2357","y":"0.5976"},{"x":"0.8619","y":"0.6320"},{"x":"0.8595","y":"0.9018"},{"x":"0.2714","y":"0.8238"}],"4.51":[{"x":"0.2167","y":"0.5989"},{"x":"0.8548","y":"0.6320"},{"x":"0.8452","y":"0.8913"},{"x":"0.2571","y":"0.8225"}],"4.54":[{"x":"0.2119","y":"0.6016"},{"x":"0.8381","y":"0.6373"},{"x":"0.8310","y":"0.8833"},{"x":"0.2190","y":"0.8185"}],"4.58":[{"x":"0.2071","y":"0.5936"},{"x":"0.8429","y":"0.6333"},{"x":"0.8167","y":"0.8886"},{"x":"0.2095","y":"0.8291"}],"4.61":[{"x":"0.1738","y":"0.5950"},{"x":"0.8429","y":"0.6320"},{"x":"0.8095","y":"0.8926"},{"x":"0.2024","y":"0.8212"}],"4.64":[{"x":"0.1595","y":"0.5989"},{"x":"0.8119","y":"0.6373"},{"x":"0.7881","y":"0.8833"},{"x":"0.1524","y":"0.8265"}],"4.68":[{"x":"0.1667","y":"0.5963"},{"x":"0.8048","y":"0.6373"},{"x":"0.7738","y":"0.8727"},{"x":"0.1548","y":"0.8159"}],"4.71":[{"x":"0.1548","y":"0.6042"},{"x":"0.8000","y":"0.6347"},{"x":"0.7619","y":"0.8595"},{"x":"0.1429","y":"0.8291"}],"4.74":[{"x":"0.1571","y":"0.5989"},{"x":"0.8095","y":"0.6333"},{"x":"0.7714","y":"0.8542"},{"x":"0.1500","y":"0.8251"}],"4.78":[{"x":"0.1429","y":"0.6122"},{"x":"0.8071","y":"0.6294"},{"x":"0.7619","y":"0.8542"},{"x":"0.1333","y":"0.8317"}],"4.81":[{"x":"0.1571","y":"0.6148"},{"x":"0.8095","y":"0.6267"},{"x":"0.7571","y":"0.8317"},{"x":"0.1667","y":"0.8331"}],"4.84":[{"x":"0.1619","y":"0.6201"},{"x":"0.8190","y":"0.6227"},{"x":"0.7810","y":"0.8238"},{"x":"0.1905","y":"0.8317"}],"4.88":[{"x":"0.1786","y":"0.6267"},{"x":"0.8238","y":"0.6214"},{"x":"0.7952","y":"0.8106"},{"x":"0.2167","y":"0.8317"}],"4.91":[{"x":"0.1643","y":"0.6333"},{"x":"0.8190","y":"0.6227"},{"x":"0.8024","y":"0.8185"},{"x":"0.2167","y":"0.8357"}],"4.94":[{"x":"0.1952","y":"0.6360"},{"x":"0.8548","y":"0.6135"},{"x":"0.8286","y":"0.8093"},{"x":"0.2286","y":"0.8463"}],"4.98":[{"x":"0.2262","y":"0.6373"},{"x":"0.8548","y":"0.6122"},{"x":"0.8524","y":"0.8106"},{"x":"0.2810","y":"0.8463"}],"5.01":[{"x":"0.2405","y":"0.6386"},{"x":"0.8690","y":"0.6122"},{"x":"0.8810","y":"0.8106"},{"x":"0.2881","y":"0.8463"}],"5.04":[{"x":"0.2429","y":"0.6545"},{"x":"0.8810","y":"0.6148"},{"x":"0.8810","y":"0.8106"},{"x":"0.3143","y":"0.8436"}],"5.08":[{"x":"0.2500","y":"0.6452"},{"x":"0.9048","y":"0.6069"},{"x":"0.9048","y":"0.8093"},{"x":"0.3095","y":"0.8503"}],"5.11":[{"x":"0.2643","y":"0.6479"},{"x":"0.9048","y":"0.6161"},{"x":"0.9429","y":"0.8212"},{"x":"0.3214","y":"0.8542"}],"5.14":[{"x":"0.2667","y":"0.6545"},{"x":"0.9262","y":"0.6175"},{"x":"0.9643","y":"0.8265"},{"x":"0.3310","y":"0.8582"}],"5.18":[{"x":"0.2762","y":"0.6426"},{"x":"0.9333","y":"0.6227"},{"x":"0.9738","y":"0.8384"},{"x":"0.3262","y":"0.8595"}],"5.21":[{"x":"0.2619","y":"0.6466"},{"x":"0.9381","y":"0.6267"},{"x":"0.9524","y":"0.8542"},{"x":"0.3167","y":"0.8661"}],"5.24":[{"x":"0.2524","y":"0.6505"},{"x":"0.9095","y":"0.6267"},{"x":"0.9524","y":"0.8503"},{"x":"0.3167","y":"0.8582"}],"5.28":[{"x":"0.2619","y":"0.6426"},{"x":"0.9429","y":"0.6280"},{"x":"0.9381","y":"0.8582"},{"x":"0.3190","y":"0.8529"}],"5.31":[{"x":"0.2500","y":"0.6399"},{"x":"0.9167","y":"0.6386"},{"x":"0.9357","y":"0.8780"},{"x":"0.2881","y":"0.8648"}],"5.34":[{"x":"0.2333","y":"0.6399"},{"x":"0.8952","y":"0.6426"},{"x":"0.8881","y":"0.8847"},{"x":"0.2738","y":"0.8595"}],"5.38":[{"x":"0.2214","y":"0.6307"},{"x":"0.8714","y":"0.6518"},{"x":"0.8833","y":"0.8820"},{"x":"0.2357","y":"0.8608"}],"5.41":[{"x":"0.2214","y":"0.6347"},{"x":"0.8643","y":"0.6452"},{"x":"0.8643","y":"0.8860"},{"x":"0.2500","y":"0.8529"}],"5.44":[{"x":"0.2119","y":"0.6333"},{"x":"0.8643","y":"0.6545"},{"x":"0.8429","y":"0.8860"},{"x":"0.2381","y":"0.8516"}],"5.48":[{"x":"0.1952","y":"0.6320"},{"x":"0.8357","y":"0.6638"},{"x":"0.7976","y":"0.8807"},{"x":"0.2167","y":"0.8410"}],"5.51":[{"x":"0.1881","y":"0.6294"},{"x":"0.8286","y":"0.6638"},{"x":"0.8286","y":"0.8873"},{"x":"0.2048","y":"0.8476"}],"5.54":[{"x":"0.1976","y":"0.6294"},{"x":"0.8286","y":"0.6624"},{"x":"0.8071","y":"0.8688"},{"x":"0.1714","y":"0.8503"}],"5.58":[{"x":"0.1881","y":"0.6294"},{"x":"0.8381","y":"0.6611"},{"x":"0.7905","y":"0.8966"},{"x":"0.1643","y":"0.8516"}],"5.61":[{"x":"0.1905","y":"0.6294"},{"x":"0.8310","y":"0.6585"},{"x":"0.7738","y":"0.8780"},{"x":"0.1786","y":"0.8476"}],"5.64":[{"x":"0.1738","y":"0.6320"},{"x":"0.8333","y":"0.6558"},{"x":"0.7857","y":"0.8688"},{"x":"0.1905","y":"0.8476"}],"5.68":[{"x":"0.1786","y":"0.6333"},{"x":"0.8333","y":"0.6492"},{"x":"0.7976","y":"0.8675"},{"x":"0.1881","y":"0.8556"}],"5.71":[{"x":"0.1905","y":"0.6426"},{"x":"0.8595","y":"0.6558"},{"x":"0.8119","y":"0.8635"},{"x":"0.2238","y":"0.8582"}],"5.74":[{"x":"0.1929","y":"0.6413"},{"x":"0.8381","y":"0.6466"},{"x":"0.8214","y":"0.8516"},{"x":"0.2119","y":"0.8476"}],"5.78":[{"x":"0.2095","y":"0.6439"},{"x":"0.8500","y":"0.6479"},{"x":"0.8357","y":"0.8622"},{"x":"0.2238","y":"0.8569"}],"5.81":[{"x":"0.2167","y":"0.6426"},{"x":"0.8643","y":"0.6373"},{"x":"0.8643","y":"0.8595"},{"x":"0.2619","y":"0.8635"}],"5.84":[{"x":"0.2190","y":"0.6558"},{"x":"0.8667","y":"0.6307"},{"x":"0.8643","y":"0.8569"},{"x":"0.2786","y":"0.8701"}],"5.88":[{"x":"0.2500","y":"0.6571"},{"x":"0.8738","y":"0.6373"},{"x":"0.8929","y":"0.8476"},{"x":"0.2833","y":"0.8794"}],"5.91":[{"x":"0.2262","y":"0.6532"},{"x":"0.8905","y":"0.6347"},{"x":"0.8905","y":"0.8489"},{"x":"0.2976","y":"0.8661"}],"5.94":[{"x":"0.2333","y":"0.6638"},{"x":"0.8905","y":"0.6347"},{"x":"0.9286","y":"0.8489"},{"x":"0.2905","y":"0.8661"}],"5.98":[{"x":"0.2452","y":"0.6624"},{"x":"0.8929","y":"0.6320"},{"x":"0.9048","y":"0.8503"},{"x":"0.3024","y":"0.8714"}],"6.01":[{"x":"0.2548","y":"0.6558"},{"x":"0.8952","y":"0.6320"},{"x":"0.9167","y":"0.8556"},{"x":"0.3095","y":"0.8701"}],"6.04":[{"x":"0.2429","y":"0.6651"},{"x":"0.8929","y":"0.6347"},{"x":"0.9000","y":"0.8503"},{"x":"0.2929","y":"0.8741"}]};
+
+    const keys = Object.keys(trackingData).map(Number).sort((a,b)=>a-b);
+
+    // --- 關鍵：矩陣轉換函數 ---
+    function getMatrix3d(subs, refs) {
+        function adj(m) {
+            return [
+                m[4]*m[8]-m[5]*m[7], m[2]*m[7]-m[1]*m[8], m[1]*m[5]-m[2]*m[4],
+                m[5]*m[6]-m[3]*m[8], m[0]*m[8]-m[2]*m[6], m[2]*m[3]-m[0]*m[5],
+                m[3]*m[7]-m[4]*m[6], m[1]*m[6]-m[0]*m[7], m[0]*m[4]-m[1]*m[3]
+            ];
+        }
+        function mult(a, b) {
+            let res = new Array(9).fill(0);
+            for(let i=0; i<3; i++) for(let j=0; j<3; j++) for(let k=0; k<3; k++) res[i*3+j] += a[i*3+k]*b[k*3+j];
+            return res;
+        }
+        function basisToPoints(x1, y1, x2, y2, x3, y3, x4, y4) {
+            let m = [x1, x2, x3, y1, y2, y3, 1, 1, 1];
+            let v = mult(adj(m), [x4, y4, 1]);
+            return mult(m, [v[0], 0, 0, 0, v[1], 0, 0, 0, v[2]]);
+        }
+        let s = basisToPoints(...subs), d = basisToPoints(...refs);
+        let m = mult(d, adj(s));
+        for(let i=0; i<9; i++) m[i] /= m[8];
+        return [m[0], m[3], 0, m[6], m[1], m[4], 0, m[7], 0, 0, 1, 0, m[2], m[5], 0, 1];
+    }
+
+    function animate() {
+        const cur = v.currentTime;
+        
+        // NHK 顯示：4.8秒後顯示，結束後重置
+        if (cur >= 4.8 && cur < 6.0) { nhkEnd.style.opacity = '1'; }
+        else { nhkEnd.style.opacity = '0'; }
+
+        // 定位文字
+        let idx = keys.findIndex(k => k > cur) - 1;
+        if (idx >= 0 && keys[idx+1]) {
+            const t1 = keys[idx], t2 = keys[idx+1];
+            const r = (cur - t1) / (t2 - t1);
+            const p1 = trackingData[t1], p2 = trackingData[t2];
+            
+            const pts = p1.map((p, i) => ({
+                x: (parseFloat(p.x) + (parseFloat(p2[i].x) - parseFloat(p.x)) * r) * v.clientWidth,
+                y: (parseFloat(p.y) + (parseFloat(p2[i].y) - parseFloat(p.y)) * r) * v.clientHeight
+            }));
+
+            // 將文字框的四個角鎖死在黑板定位點上
+            const matrix = getMatrix3d(
+                [0, 0, 300, 0, 0, 150, 300, 150], // 原始文字尺寸
+                [pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[3].x, pts[3].y, pts[2].x, pts[2].y]
+            );
+            textDiv.style.transform = `matrix3d(${matrix.join(',')})`;
+            textDiv.innerText = inputField.value;
+            textDiv.style.visibility = 'visible';
+        } else {
+            textDiv.style.visibility = 'hidden';
+        }
+        requestAnimationFrame(animate);
+    }
+
+    // 模式判斷
     const urlParams = new URLSearchParams(window.location.search);
-    const urlText = urlParams.get('text');
-    if (urlText) {
-        currentText = decodeURIComponent(urlText);
-        inputField.value = currentText;
+    if (urlParams.get('text')) {
+        inputField.value = decodeURIComponent(urlParams.get('text'));
         document.body.classList.add('viewer-mode');
         window.addEventListener('click', () => { v.muted = false; }, { once: true });
     }
 
     function updatePreview() {
-        currentText = inputField.value;
         v.currentTime = 0;
         v.play();
     }
 
     function shareAndCopy() {
-        const shareUrl = `${window.location.origin}${window.location.pathname}?text=${encodeURIComponent(inputField.value)}`;
-        navigator.clipboard.writeText(shareUrl).then(() => {
-            const toast = document.getElementById('toast');
-            toast.style.opacity = '1';
-            setTimeout(() => toast.style.opacity = '0', 2000);
+        const url = `${window.location.origin}${window.location.pathname}?text=${encodeURIComponent(inputField.value)}`;
+        navigator.clipboard.writeText(url).then(() => {
+            const t = document.getElementById('toast');
+            t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2000);
         });
     }
 
-    // 數據區 (為節省長度，請確保在此處貼上之前的完整 trackingData)
-    const trackingData = {"3.64":[{"x":"0.1071","y":"0.6915"},{"x":"0.9238","y":"0.6809"},{"x":"0.9238","y":"0.9468"},{"x":"0.1905","y":"0.9839"}],"6.04":[{"x":"0.2429","y":"0.6651"},{"x":"0.8929","y":"0.6347"},{"x":"0.9000","y":"0.8503"},{"x":"0.2929","y":"0.8741"}]}; 
-    // 請記得把之前的 trackingData 全部內容貼回上面這行
-
-    const keys = Object.keys(trackingData).map(Number).sort((a,b)=>a-b);
-
-    function getPointsAtTime(t) {
-        if (t < keys[0] || t > keys[keys.length-1]) return null;
-        let idx = keys.findIndex(k => k > t) - 1;
-        if (idx < 0) idx = 0;
-        const t1 = keys[idx], t2 = keys[idx+1];
-        const p1 = trackingData[t1], p2 = trackingData[t2];
-        const r = (t - t1) / (t2 - t1);
-        return p1.map((p, i) => ({
-            x: parseFloat(p.x) + (parseFloat(p2[i].x) - parseFloat(p.x)) * r,
-            y: parseFloat(p.y) + (parseFloat(p2[i].y) - parseFloat(p.y)) * r
-        }));
-    }
-
-    function drawSmartChalk(pts, text) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const temp = document.createElement('canvas');
-        temp.width = 600; temp.height = 400;
-        const tCtx = temp.getContext('2d');
-        const len = text.length || 1;
-        let fontSize = Math.max(35, Math.min(95, 450 / Math.sqrt(len * 2))); 
-        tCtx.fillStyle = "rgba(255,255,255,0.92)";
-        tCtx.textAlign = "center";
-        tCtx.textBaseline = "middle";
-        let lines = (len > 8) ? [text.substring(0, Math.ceil(len/2)), text.substring(Math.ceil(len/2))] : [text];
-        if (len > 8) fontSize *= 1.1;
-        tCtx.font = `bold ${fontSize}px "Microsoft JhengHei", sans-serif`;
-        lines.forEach((line, i) => {
-            const y = (lines.length > 1) ? (200 + (i * fontSize * 1.1 - (fontSize/2))) : 200;
-            tCtx.fillText(line, 300, y);
-        });
-        const p = pts.map(pt => ({ x: pt.x * canvas.width, y: pt.y * canvas.height }));
-        const centerX = (p[0].x + p[1].x + p[2].x + p[3].x) / 4;
-        const centerY = (p[0].y + p[1].y + p[2].y + p[3].y) / 4;
-        const angle = Math.atan2(p[1].y - p[0].y, p[1].x - p[0].x);
-        const boardWidth = Math.sqrt(Math.pow(p[1].x - p[0].x, 2) + Math.pow(p[1].y - p[0].y, 2));
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(angle);
-        ctx.scale((boardWidth * 0.88) / temp.width, (boardWidth * 0.88) / temp.width);
-        ctx.drawImage(temp, -300, -200);
-        ctx.restore();
-    }
-
-    function animate() {
-        const cur = v.currentTime;
-
-        // --- 強制觸發 NHK 邏輯 (使用絕對秒數) ---
-        // 假設影片在 6 秒左右結束，我們設定在 4.8 秒顯示
-        if (cur >= 4.8 && cur < 6.0) {
-            nhkEnd.style.opacity = '1';
-        } else {
-            nhkEnd.style.opacity = '0';
-        }
-
-        const pts = getPointsAtTime(cur);
-        if (pts) drawSmartChalk(pts, currentText);
-        else ctx.clearRect(0,0,canvas.width,canvas.height);
-        
-        requestAnimationFrame(animate);
-    }
-
-    v.addEventListener('loadedmetadata', () => {
-        canvas.width = v.clientWidth;
-        canvas.height = v.clientHeight;
-        animate();
-    });
-
-    // 解決部分手機瀏覽器不觸發 loadedmetadata 的問題
-    setTimeout(() => {
-        if (canvas.width === 0) {
-            canvas.width = v.clientWidth;
-            canvas.height = v.clientHeight;
-        }
-    }, 500);
+    v.onplay = () => animate();
 </script>
 </body>
 </html>
