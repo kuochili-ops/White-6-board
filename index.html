@@ -3,208 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>地鐵 3D - 穩定錄製修復版</title>
+    <title>狗狗黑板 - KUO 自動分行版</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
-        .app-container { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; }
-        .viewport { position: relative; flex: 1; background: #000; overflow: hidden; perspective: 2200px; }
-        
-        video#v { width: 100%; height: 100%; object-fit: cover; z-index: 1; }
-        #canvas-image { 
-            position: absolute; top: 0; left: 0; width: 1800px; height: 800px; 
-            transform-origin: 0 0; z-index: 2;
-            clip-path: inset(0 0 0 100%); 
-            pointer-events: none;
-        }
+        body { background: #000; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; font-family: -apple-system, "Microsoft JhengHei", sans-serif; }
+        .phone-frame { position: relative; width: 100vw; height: 100vh; max-width: 450px; max-height: 800px; background: #000; overflow: hidden; }
+        #v { position: absolute; width: 100%; height: 100%; object-fit: cover; }
+        #drawingCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; mix-blend-mode: screen; filter: blur(0.3px) brightness(1.2); }
 
-        #kuo-end-img {
-            position: absolute; bottom: 25px; right: 25px; width: 120px;
-            z-index: 999; opacity: 0; transition: 0.8s; mix-blend-mode: screen;
+        #kuo-end {
+            position: absolute; bottom: 95px; right: 30px; z-index: 999;
+            color: white; font-family: "serif", "SimSun", "PMingLiU", serif;
+            opacity: 0; transition: opacity 0.5s ease-in; pointer-events: none;
+            text-shadow: 0 0 8px rgba(0,0,0,0.9), 2px 2px 4px rgba(0,0,0,0.9);
+            display: flex; align-items: flex-end; gap: 12px;
         }
+        .nhk-layout { display: flex; flex-direction: column; align-items: flex-start; }
+        .nhk-text { font-size: 13px; font-weight: bold; letter-spacing: 1px; margin-bottom: 2px; }
+        .nhk-logo { border: 2.5px solid white; padding: 2px 10px; font-size: 26px; font-weight: 900; line-height: 1; letter-spacing: 3px; font-family: sans-serif; }
+        .nhk-final { font-size: 48px; font-weight: bold; line-height: 0.85; margin-right: 2px; }
 
-        /* UI 介面維持原樣 */
-        .ui-bar { background: rgba(10, 10, 10, 0.95); padding: 12px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; border-top: 1px solid #333; }
-        .row { display: flex; gap: 8px; align-items: center; color: #fff; font-size: 12px; }
-        input[type="text"] { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 10px; border-radius: 8px; outline: none; }
-        input[type="color"] { width: 35px; height: 35px; border: none; background: none; cursor: pointer; }
-        .btn-row { display: flex; gap: 8px; width: 100%; }
-        button { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
-        .preview-btn { background: #333; color: white; }
+        .admin-ui { position: absolute; bottom: 30px; width: 100%; z-index: 100; display: flex; flex-direction: column; align-items: center; gap: 12px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding-bottom: 20px; }
+        body.viewer-mode .admin-ui { display: none !important; }
+        input { padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.3); background: rgba(20,20,20,0.9); color: #fff; text-align: center; width: 85%; font-size: 16px; outline: none; }
+        .btn-row { display: flex; gap: 8px; width: 90%; }
+        button { flex: 1; padding: 14px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .confirm-btn { background: #ffffff; color: #000; }
+        .share-btn { background: #007AFF; color: #fff; }
         .record-btn { background: #FF3B30; color: #fff; }
+        #toast { position: fixed; top: 40px; background: #32D74B; color: #fff; padding: 10px 25px; border-radius: 20px; font-weight: bold; opacity: 0; transition: opacity 0.3s; z-index: 1000; }
     </style>
 </head>
-<body>
+<body class="admin-mode">
 
-<div class="app-container">
-    <div class="viewport" id="stage">
-        <video id="v" src="Train.mov" loop muted playsinline crossorigin="anonymous"></video>
-        <img id="canvas-image">
-        <img id="kuo-end-img" src="IMG_6604.png">
-    </div>
+    <div id="toast">✅ 連結已複製</div>
 
-    <div class="ui-bar">
-        <div class="row">
-            字：<input type="color" id="textColor" value="#ffffff" oninput="App.renderText()">
-            底：<input type="color" id="bgColor" value="#000000" oninput="App.renderText()">
-            <input type="text" id="userInput" placeholder="輸入文字..." oninput="App.renderText()">
+    <div class="phone-frame">
+        <video id="v" src="White6.mp4" autoplay loop muted playsinline crossorigin="anonymous"></video>
+        <canvas id="drawingCanvas"></canvas>
+
+        <div id="kuo-end">
+            <span class="nhk-final">終</span>
+            <div class="nhk-layout">
+                <div class="nhk-text">制作・著作</div>
+                <div class="nhk-logo">ＫＵＯ</div>
+            </div>
         </div>
-        <div class="btn-row">
-            <button class="preview-btn" onclick="App.play()">播放預覽</button>
-            <button class="record-btn" id="recBtn" onclick="App.startCapture()">錄製導出</button>
+
+        <div class="admin-ui">
+            <input type="text" id="userInput" value="Minnie 2026 新年快樂" placeholder="輸入訊息...">
+            <div class="btn-row">
+                <button class="confirm-btn" onclick="updatePreview()">預覽</button>
+                <button class="share-btn" onclick="shareAndCopy()">分享</button>
+                <button class="record-btn" id="recBtn" onclick="startCapture()">錄製</button>
+            </div>
         </div>
     </div>
-</div>
-
-<canvas id="temp-cvs" style="display:none;"></canvas>
 
 <script>
-const App = {
-    // 您的核心透視參數 (文字上移已包含)
-    pts: [
-        {x: 0.05, y: 0.35}, {x: 0.99, y: 0.18}, 
-        {x: 0.98, y: 0.74}, {x: 0.04, y: 0.55}
-    ],
-    timing: { start: 2.55, end: 3.83 }, 
-    
-    init: function() {
-        this.v = document.getElementById('v');
-        this.img = document.getElementById('canvas-image');
-        this.logoImg = document.getElementById('kuo-end-img');
-        this.input = document.getElementById('userInput');
-        this.colorPicker = document.getElementById('textColor');
-        this.bgPicker = document.getElementById('bgColor');
-        this.tempCvs = document.getElementById('temp-cvs');
-        this.tCtx = this.tempCvs.getContext('2d');
-        
-        window.addEventListener('resize', () => this.updateWarp());
-        this.updateWarp();
-        this.renderText();
-        this.animate();
-    },
+    const v = document.getElementById('v');
+    const canvas = document.getElementById('drawingCanvas');
+    const kuoEnd = document.getElementById('kuo-end');
+    const ctx = canvas.getContext('2d');
+    const inputField = document.getElementById('userInput');
+    let currentText = inputField.value;
 
-    updateWarp: function() {
-        const r = document.getElementById('stage').getBoundingClientRect();
-        // 將 1800x800 的文字畫布映射到螢幕透視點
-        const p = this.pts.map(pt => ({ x: pt.x * r.width, y: pt.y * r.height }));
-        this.m = this.calcMatrix(0,0, 1800,0, 1800,800, 0,800, p[0].x, p[0].y, p[1].x, p[1].y, p[2].x, p[2].y, p[3].x, p[3].y);
-        this.img.style.transform = `matrix3d(${this.m.join(',')})`;
-    },
+    const trackingData = {"3.64":[{"x":"0.1071","y":"0.6915"},{"x":"0.9238","y":"0.6809"},{"x":"0.9238","y":"0.9468"},{"x":"0.1905","y":"0.9839"}],"3.68":[{"x":"0.1619","y":"0.6955"},{"x":"0.8881","y":"0.6809"},{"x":"0.8833","y":"0.9190"},{"x":"0.1881","y":"0.9429"}],"3.71":[{"x":"0.1381","y":"0.6862"},{"x":"0.8548","y":"0.6624"},{"x":"0.8286","y":"0.8833"},{"x":"0.1929","y":"0.9230"}],"3.74":[{"x":"0.1429","y":"0.6770"},{"x":"0.8595","y":"0.6598"},{"x":"0.8500","y":"0.8820"},{"x":"0.1905","y":"0.9257"}],"3.78":[{"x":"0.1452","y":"0.6902"},{"x":"0.8476","y":"0.6585"},{"x":"0.8095","y":"0.8608"},{"x":"0.1881","y":"0.9018"}],"3.81":[{"x":"0.1452","y":"0.6717"},{"x":"0.8190","y":"0.6347"},{"x":"0.7857","y":"0.8423"},{"x":"0.1905","y":"0.8913"}],"3.84":[{"x":"0.1262","y":"0.6823"},{"x":"0.8024","y":"0.6518"},{"x":"0.7857","y":"0.8278"},{"x":"0.1833","y":"0.8820"}],"3.88":[{"x":"0.1667","y":"0.6809"},{"x":"0.8000","y":"0.6267"},{"x":"0.7500","y":"0.7987"},{"x":"0.2167","y":"0.8595"}],"3.91":[{"x":"0.1333","y":"0.6796"},{"x":"0.7976","y":"0.6188"},{"x":"0.7905","y":"0.8079"},{"x":"0.1952","y":"0.8675"}],"3.94":[{"x":"0.2000","y":"0.6664"},{"x":"0.8095","y":"0.6201"},{"x":"0.7762","y":"0.7775"},{"x":"0.2119","y":"0.8595"}],"3.98":[{"x":"0.2024","y":"0.6598"},{"x":"0.8024","y":"0.6148"},{"x":"0.7738","y":"0.7828"},{"x":"0.2071","y":"0.8436"}],"4.01":[{"x":"0.1929","y":"0.6558"},{"x":"0.8119","y":"0.6082"},{"x":"0.7786","y":"0.7722"},{"x":"0.2238","y":"0.8265"}],"4.04":[{"x":"0.2024","y":"0.6452"},{"x":"0.8143","y":"0.6042"},{"x":"0.7976","y":"0.7762"},{"x":"0.2452","y":"0.8198"}],"4.08":[{"x":"0.1952","y":"0.6452"},{"x":"0.8214","y":"0.6042"},{"x":"0.8000","y":"0.7735"},{"x":"0.2381","y":"0.8225"}],"4.11":[{"x":"0.2048","y":"0.6399"},{"x":"0.8310","y":"0.6122"},{"x":"0.8095","y":"0.7868"},{"x":"0.2357","y":"0.8145"}],"4.14":[{"x":"0.2143","y":"0.6320"},{"x":"0.8429","y":"0.6201"},{"x":"0.8405","y":"0.8040"},{"x":"0.2643","y":"0.8093"}],"4.18":[{"x":"0.2262","y":"0.6254"},{"x":"0.8571","y":"0.6227"},{"x":"0.8595","y":"0.8119"},{"x":"0.2667","y":"0.8093"}],"4.21":[{"x":"0.2238","y":"0.6201"},{"x":"0.8619","y":"0.6267"},{"x":"0.9048","y":"0.8331"},{"x":"0.2929","y":"0.8066"}],"4.24":[{"x":"0.2238","y":"0.6201"},{"x":"0.8810","y":"0.6227"},{"x":"0.8714","y":"0.8370"},{"x":"0.2952","y":"0.8106"}],"4.28":[{"x":"0.2333","y":"0.6161"},{"x":"0.8738","y":"0.6307"},{"x":"0.8857","y":"0.8463"},{"x":"0.2952","y":"0.8119"}],"4.31":[{"x":"0.2524","y":"0.6108"},{"x":"0.8714","y":"0.6307"},{"x":"0.9167","y":"0.8714"},{"x":"0.3071","y":"0.8145"}],"4.34":[{"x":"0.2524","y":"0.6095"},{"x":"0.8690","y":"0.6347"},{"x":"0.9119","y":"0.8714"},{"x":"0.3095","y":"0.8172"}],"4.38":[{"x":"0.2429","y":"0.6042"},{"x":"0.8690","y":"0.6294"},{"x":"0.8786","y":"0.8939"},{"x":"0.3095","y":"0.8159"}],"4.41":[{"x":"0.2643","y":"0.6056"},{"x":"0.8738","y":"0.6294"},{"x":"0.8833","y":"0.8860"},{"x":"0.3048","y":"0.8185"}],"4.44":[{"x":"0.2619","y":"0.5936"},{"x":"0.8643","y":"0.6373"},{"x":"0.8881","y":"0.8913"},{"x":"0.3000","y":"0.8198"}],"4.48":[{"x":"0.2357","y":"0.5976"},{"x":"0.8619","y":"0.6320"},{"x":"0.8595","y":"0.9018"},{"x":"0.2714","y":"0.8238"}],"4.51":[{"x":"0.2167","y":"0.5989"},{"x":"0.8548","y":"0.6320"},{"x":"0.8452","y":"0.8913"},{"x":"0.2571","y":"0.8225"}],"4.54":[{"x":"0.2119","y":"0.6016"},{"x":"0.8381","y":"0.6373"},{"x":"0.8310","y":"0.8833"},{"x":"0.2190","y":"0.8185"}],"4.58":[{"x":"0.2071","y":"0.5936"},{"x":"0.8429","y":"0.6333"},{"x":"0.8167","y":"0.8886"},{"x":"0.2095","y":"0.8291"}],"4.61":[{"x":"0.1738","y":"0.5950"},{"x":"0.8429","y":"0.6320"},{"x":"0.8095","y":"0.8926"},{"x":"0.2024","y":"0.8212"}],"4.64":[{"x":"0.1595","y":"0.5989"},{"x":"0.8119","y":"0.6373"},{"x":"0.7881","y":"0.8833"},{"x":"0.1524","y":"0.8265"}],"4.68":[{"x":"0.1667","y":"0.5963"},{"x":"0.8048","y":"0.6373"},{"x":"0.7738","y":"0.8727"},{"x":"0.1548","y":"0.8159"}],"4.71":[{"x":"0.1548","y":"0.6042"},{"x":"0.8000","y":"0.6347"},{"x":"0.7619","y":"0.8595"},{"x":"0.1429","y":"0.8291"}],"4.74":[{"x":"0.1571","y":"0.5989"},{"x":"0.8095","y":"0.6333"},{"x":"0.7714","y":"0.8542"},{"x":"0.1500","y":"0.8251"}],"4.78":[{"x":"0.1429","y":"0.6122"},{"x":"0.8071","y":"0.6294"},{"x":"0.7619","y":"0.8542"},{"x":"0.1333","y":"0.8317"}],"4.81":[{"x":"0.1571","y":"0.6148"},{"x":"0.8095","y":"0.6267"},{"x":"0.7571","y":"0.8317"},{"x":"0.1667","y":"0.8331"}],"4.84":[{"x":"0.1619","y":"0.6201"},{"x":"0.8190","y":"0.6227"},{"x":"0.7810","y":"0.8238"},{"x":"0.1905","y":"0.8317"}],"4.88":[{"x":"0.1786","y":"0.6267"},{"x":"0.8238","y":"0.6214"},{"x":"0.7952","y":"0.8106"},{"x":"0.2167","y":"0.8317"}],"4.91":[{"x":"0.1643","y":"0.6333"},{"x":"0.8190","y":"0.6227"},{"x":"0.8024","y":"0.8185"},{"x":"0.2167","y":"0.8357"}],"4.94":[{"x":"0.1952","y":"0.6360"},{"x":"0.8548","y":"0.6135"},{"x":"0.8286","y":"0.8093"},{"x":"0.2286","y":"0.8463"}],"4.98":[{"x":"0.2262","y":"0.6373"},{"x":"0.8548","y":"0.6122"},{"x":"0.8524","y":"0.8106"},{"x":"0.2810","y":"0.8463"}],"5.01":[{"x":"0.2405","y":"0.6386"},{"x":"0.8690","y":"0.6122"},{"x":"0.8810","y":"0.8106"},{"x":"0.2881","y":"0.8463"}],"5.04":[{"x":"0.2429","y":"0.6545"},{"x":"0.8810","y":"0.6148"},{"x":"0.8810","y":"0.8106"},{"x":"0.3143","y":"0.8436"}],"5.08":[{"x":"0.2500","y":"0.6452"},{"x":"0.9048","y":"0.6069"},{"x":"0.9048","y":"0.8093"},{"x":"0.3095","y":"0.8503"}],"5.11":[{"x":"0.2643","y":"0.6479"},{"x":"0.9048","y":"0.6161"},{"x":"0.9429","y":"0.8212"},{"x":"0.3214","y":"0.8542"}],"5.14":[{"x":"0.2667","y":"0.6545"},{"x":"0.9262","y":"0.6175"},{"x":"0.9643","y":"0.8265"},{"x":"0.3310","y":"0.8582"}],"5.18":[{"x":"0.2762","y":"0.6426"},{"x":"0.9333","y":"0.6227"},{"x":"0.9738","y":"0.8384"},{"x":"0.3262","y":"0.8595"}],"5.21":[{"x":"0.2619","y":"0.6466"},{"x":"0.9381","y":"0.6267"},{"x":"0.9524","y":"0.8542"},{"x":"0.3167","y":"0.8661"}],"5.24":[{"x":"0.2524","y":"0.6505"},{"x":"0.9095","y":"0.6267"},{"x":"0.9524","y":"0.8503"},{"x":"0.3167","y":"0.8582"}],"5.28":[{"x":"0.2619","y":"0.6426"},{"x":"0.9429","y":"0.6280"},{"x":"0.9381","y":"0.8582"},{"x":"0.3190","y":"0.8529"}],"5.31":[{"x":"0.2500","y":"0.6399"},{"x":"0.9167","y":"0.6386"},{"x":"0.9357","y":"0.8780"},{"x":"0.2881","y":"0.8648"}],"5.34":[{"x":"0.2333","y":"0.6399"},{"x":"0.8952","y":"0.6426"},{"x":"0.8881","y":"0.8847"},{"x":"0.2738","y":"0.8595"}],"5.38":[{"x":"0.2214","y":"0.6307"},{"x":"0.8714","y":"0.6518"},{"x":"0.8833","y":"0.8820"},{"x":"0.2357","y":"0.8608"}],"5.41":[{"x":"0.2214","y":"0.6347"},{"x":"0.8643","y":"0.6452"},{"x":"0.8643","y":"0.8860"},{"x":"0.2500","y":"0.8529"}],"5.44":[{"x":"0.2119","y":"0.6333"},{"x":"0.8643","y":"0.6545"},{"x":"0.8429","y":"0.8860"},{"x":"0.2381","y":"0.8516"}],"5.48":[{"x":"0.1952","y":"0.6320"},{"x":"0.8357","y":"0.6638"},{"x":"0.7976","y":"0.8807"},{"x":"0.2167","y":"0.8410"}],"5.51":[{"x":"0.1881","y":"0.6294"},{"x":"0.8286","y":"0.6638"},{"x":"0.8286","y":"0.8873"},{"x":"0.2048","y":"0.8476"}],"5.54":[{"x":"0.1976","y":"0.6294"},{"x":"0.8286","y":"0.6624"},{"x":"0.8071","y":"0.8688"},{"x":"0.1714","y":"0.8503"}],"5.58":[{"x":"0.1881","y":"0.6294"},{"x":"0.8381","y":"0.6611"},{"x":"0.7905","y":"0.8966"},{"x":"0.1643","y":"0.8516"}],"5.61":[{"x":"0.1905","y":"0.6294"},{"x":"0.8310","y":"0.6585"},{"x":"0.7738","y":"0.8780"},{"x":"0.1786","y":"0.8476"}],"5.64":[{"x":"0.1738","y":"0.6320"},{"x":"0.8333","y":"0.6558"},{"x":"0.7857","y":"0.8688"},{"x":"0.1905","y":"0.8476"}],"5.68":[{"x":"0.1786","y":"0.6333"},{"x":"0.8333","y":"0.6492"},{"x":"0.8976","y":"0.8675"},{"x":"0.1881","y":"0.8556"}],"5.71":[{"x":"0.1905","y":"0.6426"},{"x":"0.8595","y":"0.6558"},{"x":"0.8119","y":"0.8635"},{"x":"0.2238","y":"0.8582"}],"5.74":[{"x":"0.1929","y":"0.6413"},{"x":"0.8381","y":"0.6466"},{"x":"0.8214","y":"0.8516"},{"x":"0.2119","y":"0.8476"}],"5.78":[{"x":"0.2095","y":"0.6439"},{"x":"0.8500","y":"0.6479"},{"x":"0.8357","y":"0.8622"},{"x":"0.2238","y":"0.8569"}],"5.81":[{"x":"0.2167","y":"0.6426"},{"x":"0.8643","y":"0.6373"},{"x":"0.8643","y":"0.8595"},{"x":"0.2619","y":"0.8635"}],"5.84":[{"x":"0.2190","y":"0.6558"},{"x":"0.8667","y":"0.6307"},{"x":"0.8643","y":"0.8569"},{"x":"0.2786","y":"0.8701"}],"5.88":[{"x":"0.2500","y":"0.6571"},{"x":"0.8738","y":"0.6373"},{"x":"0.8929","y":"0.8476"},{"x":"0.2833","y":"0.8794"}],"5.91":[{"x":"0.2262","y":"0.6532"},{"x":"0.8905","y":"0.6347"},{"x":"0.8905","y":"0.8489"},{"x":"0.2976","y":"0.8661"}],"5.94":[{"x":"0.2333","y":"0.6638"},{"x":"0.8905","y":"0.6347"},{"x":"0.9286","y":"0.8489"},{"x":"0.2905","y":"0.8661"}],"5.98":[{"x":"0.2452","y":"0.6624"},{"x":"0.8929","y":"0.6320"},{"x":"0.9048","y":"0.8503"},{"x":"0.3024","y":"0.8714"}],"6.01":[{"x":"0.2548","y":"0.6558"},{"x":"0.8952","y":"0.6320"},{"x":"0.9167","y":"0.8556"},{"x":"0.3095","y":"0.8701"}],"6.04":[{"x":"0.2429","y":"0.6651"},{"x":"0.8929","y":"0.6347"},{"x":"0.9000","y":"0.8503"},{"x":"0.2929","y":"0.8741"}]};
 
-    renderText: function() {
-        this.tempCvs.width = 1800; this.tempCvs.height = 800;
-        const txt = this.input.value || "震撼地鐵";
-        this.tCtx.clearRect(0, 0, 1800, 800);
-        
-        this.tCtx.save();
-        this.tCtx.translate(1790, 385); // 文字上移設定
-        this.tCtx.scale(0.6, 1.6);
-        this.tCtx.textAlign = 'right'; this.tCtx.textBaseline = 'middle';
-        this.tCtx.font = '900 420px "Microsoft JhengHei", sans-serif';
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlText = urlParams.get('text');
+    if (urlText) {
+        currentText = decodeURIComponent(urlText);
+        inputField.value = currentText;
+        document.body.classList.replace('admin-mode', 'viewer-mode');
+        window.addEventListener('click', () => { v.muted = false; v.play(); }, { once: true });
+    }
 
-        const tw = this.tCtx.measureText(txt).width;
-        // 底色
-        this.tCtx.fillStyle = this.bgPicker.value + "CC";
-        this.tCtx.beginPath();
-        this.tCtx.roundRect(-tw - 20, -210, tw + 40, 420, 20);
-        this.tCtx.fill();
+    function updatePreview() {
+        currentText = inputField.value;
+        v.currentTime = 0; v.play();
+    }
 
-        // 字色
-        this.tCtx.fillStyle = this.colorPicker.value;
-        this.tCtx.fillText(txt, 0, 0);
-        this.tCtx.restore();
-        
-        this.img.src = this.tempCvs.toDataURL();
-    },
+    function shareAndCopy() {
+        const shareUrl = `${window.location.origin}${window.location.pathname}?text=${encodeURIComponent(inputField.value)}`;
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            const toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        });
+    }
 
-    play: function() { this.v.currentTime = 0; this.v.play(); },
-
-    animate: function() {
-        const cur = this.v.currentTime;
-        // 浮水印顯示
-        this.logoImg.style.opacity = (cur >= (this.v.duration || 5.5) - 1.8) ? '1' : '0';
-        // 進場動畫
-        const prog = Math.max(0, Math.min(1, (cur - this.timing.start) / (this.timing.end - this.timing.start)));
-        this.img.style.clipPath = (cur < this.timing.start) ? 'inset(0 0 0 100%)' : (cur > this.timing.end ? 'inset(0 0 0 0%)' : `inset(0 0 0 ${100 - prog*100}%)`);
-        requestAnimationFrame(() => this.animate());
-    },
-
-    // 參考狗狗黑板優化後的錄製功能
-    startCapture: async function() {
+    async function startCapture() {
         const btn = document.getElementById('recBtn');
         btn.innerText = "錄製中..."; btn.disabled = true;
-
         const exportCanvas = document.createElement('canvas');
-        // 自動抓取影片原始解析度，解決偏移故障
-        exportCanvas.width = this.v.videoWidth || 720; 
-        exportCanvas.height = this.v.videoHeight || 1280;
+        exportCanvas.width = v.videoWidth || 450; exportCanvas.height = v.videoHeight || 800;
         const eCtx = exportCanvas.getContext('2d');
-        
-        // 支援 webm (相容性較佳)
         const stream = exportCanvas.captureStream(30);
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
         const chunks = [];
-        
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = () => {
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.onstop = () => {
             const blob = new Blob(chunks, { type: 'video/webm' });
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob); 
-            a.download = `Subway_3D_${Date.now()}.webm`; 
-            a.click();
+            a.href = URL.createObjectURL(blob); a.download = `Dog_KUO.webm`; a.click();
             btn.innerText = "錄製"; btn.disabled = false;
         };
-
-        this.v.currentTime = 0;
-        await this.v.play();
-        recorder.start();
-
-        const renderLoop = () => {
-            if (recorder.state === "recording") {
-                // 1. 畫底層影片
-                eCtx.drawImage(this.v, 0, 0, exportCanvas.width, exportCanvas.height);
-                
-                // 2. 畫 3D 文字層
-                const cur = this.v.currentTime;
-                if (cur >= this.timing.start) {
-                    const prog = Math.min(1, (cur - this.timing.start) / (this.timing.end - this.timing.start));
-                    eCtx.save();
-                    // 核心修正：計算匯出畫布與預覽螢幕的比例係數
-                    const scale = exportCanvas.width / 1800; 
-                    // 應用 3D 矩陣
-                    eCtx.setTransform(this.m[0]*scale, this.m[1]*scale, this.m[4]*scale, this.m[5]*scale, this.m[12]*scale, this.m[13]*scale);
-                    eCtx.globalAlpha = prog;
-                    eCtx.drawImage(this.tempCvs, 0, 0);
-                    eCtx.restore();
+        v.currentTime = 0; v.play(); mediaRecorder.start();
+        function renderLoop() {
+            if (mediaRecorder.state === "recording") {
+                eCtx.drawImage(v, 0, 0, exportCanvas.width, exportCanvas.height);
+                eCtx.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
+                if (kuoEnd.style.opacity === '1') {
+                   eCtx.save(); eCtx.fillStyle = "white"; eCtx.shadowBlur = 10; eCtx.shadowColor = "black";
+                   eCtx.font = "bold 48px serif"; eCtx.fillText("終", exportCanvas.width - 210, exportCanvas.height - 110);
+                   eCtx.font = "bold 13px sans-serif"; eCtx.fillText("制作・著作", exportCanvas.width - 150, exportCanvas.height - 135);
+                   eCtx.lineWidth = 3; eCtx.strokeStyle = "white"; eCtx.strokeRect(exportCanvas.width - 150, exportCanvas.height - 125, 100, 38);
+                   eCtx.font = "bold 26px sans-serif"; eCtx.fillText("ＫＵＯ", exportCanvas.width - 140, exportCanvas.height - 96);
+                   eCtx.restore();
                 }
-                
-                // 3. 畫結尾浮水印
-                if (this.logoImg.style.opacity === '1') {
-                    eCtx.drawImage(this.logoImg, exportCanvas.width - 150, exportCanvas.height - 150, 120, 120);
-                }
-
-                if (this.v.ended || cur > 5.4) recorder.stop();
-                else requestAnimationFrame(renderLoop);
+                requestAnimationFrame(renderLoop);
             }
-        };
-        renderLoop();
-    },
-
-    // 3D 矩陣計算法
-    calcMatrix: function(x1,y1,x2,y2,x3,y3,x4,y4,px1,py1,px2,py2,px3,py3,px4,py4) {
-        const a = [[x1,y1,1,0,0,0,-px1*x1,-px1*y1],[0,0,0,x1,y1,1,-py1*x1,-py1*y1],[x2,y2,1,0,0,0,-px2*x2,-px2*y2],[0,0,0,x2,y2,1,-py2*x2,-py2*y2],[x3,y3,1,0,0,0,-px3*x3,-px3*y3],[0,0,0,x3,y3,1,-py3*x3,-py3*y3],[x4,y4,1,0,0,0,-px4*x4,-px4*y4],[0,0,0,x4,y4,1,-py4*x4,-py4*y4]];
-        const b = [px1,py1,px2,py2,px3,py3,px4,py4];
-        for(let i=0;i<8;i++){
-            let m=i; for(let j=i+1;j<8;j++) if(Math.abs(a[j][i])>Math.abs(a[m][i])) m=j;
-            [a[i],a[m]]=[a[m],a[i]]; [b[i],b[m]]=[b[m],b[i]];
-            for(let j=i+1;j<8;j++){ let f=a[j][i]/a[i][i]; b[j]-=f*b[i]; for(let k=i;k<8;k++) a[j][k]-=f*a[i][k]; }
         }
-        const x=new Array(8);
-        for(let i=7;i>=0;i--){ let s=0; for(let j=i+1;j<8;j++) s+=a[i][j]*x[j]; x[i]=(b[i]-s)/a[i][i]; }
-        return [x[0],x[3],0,x[6],x[1],x[4],0,x[7],0,0,1,0,x[2],x[5],0,1];
+        renderLoop();
+        setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 6500);
     }
-};
 
-window.onload = () => App.init();
+    const keys = Object.keys(trackingData).map(Number).sort((a,b)=>a-b);
+    function getPointsAtTime(t) {
+        if (t < keys[0] || t > keys[keys.length-1]) return null;
+        let idx = keys.findIndex(k => k > t) - 1;
+        if (idx < 0) idx = 0;
+        const t1 = keys[idx], t2 = keys[idx+1], r = (t - t1) / (t2 - t1);
+        const p1 = trackingData[t1], p2 = trackingData[t2];
+        if (!p1 || !p2) return null;
+        return p1.map((p, i) => ({
+            x: parseFloat(p.x) + (parseFloat(p2[i].x) - parseFloat(p.x)) * r,
+            y: parseFloat(p.y) + (parseFloat(p2[i].y) - parseFloat(p.y)) * r
+        }));
+    }
+    
+    // --- 優化後的繪圖函式：自動分行與縮放 ---
+    function drawSmartChalk(pts, text) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 1. 建立離屏 Canvas 進行文字佈局
+        const temp = document.createElement('canvas'); 
+        temp.width = 600; temp.height = 400;
+        const tCtx = temp.getContext('2d');
+        
+        // 2. 自動分行邏輯
+        let lines = [];
+        if (text.length <= 6) {
+            lines = [text];
+        } else if (text.length <= 12) {
+            // 中間切分
+            const mid = Math.ceil(text.length / 2);
+            lines = [text.substring(0, mid), text.substring(mid)];
+        } else {
+            // 長文字處理 (每行最多 8-10 字)
+            const chunk = Math.ceil(text.length / 2);
+            lines = [text.substring(0, chunk), text.substring(chunk)];
+        }
+
+        // 3. 動態計算字體大小 (根據行數與單行最長字數)
+        const maxChars = Math.max(...lines.map(l => l.length));
+        let fontSize = Math.min(100, 550 / maxChars); // 寬度適配
+        if (lines.length > 1) fontSize = Math.min(fontSize, 150); // 高度適配
+        
+        tCtx.fillStyle = "rgba(255,255,255,0.92)";
+        tCtx.textAlign = "center";
+        tCtx.textBaseline = "middle";
+        tCtx.font = `bold ${fontSize}px "Microsoft JhengHei", sans-serif`;
+
+        // 4. 繪製多行文字
+        const lineHeight = fontSize * 1.2;
+        const totalHeight = lines.length * lineHeight;
+        lines.forEach((line, i) => {
+            const y = 200 - (totalHeight / 2) + (lineHeight * i) + (lineHeight / 2);
+            tCtx.fillText(line, 300, y);
+        });
+
+        // 5. 將文字投影到黑板座標點
+        const p = pts.map(pt => ({ x: pt.x * canvas.width, y: pt.y * canvas.height }));
+        const cX = (p[0].x + p[1].x + p[2].x + p[3].x) / 4;
+        const cY = (p[0].y + p[1].y + p[2].y + p[3].y) / 4;
+        const angle = Math.atan2(p[1].y - p[0].y, p[1].x - p[0].x);
+        const bW = Math.sqrt(Math.pow(p[1].x - p[0].x, 2) + Math.pow(p[1].y - p[0].y, 2));
+
+        ctx.save();
+        ctx.translate(cX, cY);
+        ctx.rotate(angle);
+        // 微調縮放倍率 0.9 確保邊緣不溢出
+        const scale = (bW * 0.9) / 600;
+        ctx.scale(scale, scale);
+        ctx.drawImage(temp, -300, -200);
+        ctx.restore();
+    }
+    
+    function animate() {
+        const cur = v.currentTime;
+        kuoEnd.style.opacity = (cur >= 4.8) ? '1' : '0';
+        const pts = getPointsAtTime(cur);
+        if (pts) drawSmartChalk(pts, currentText);
+        else ctx.clearRect(0,0,canvas.width,canvas.height);
+        requestAnimationFrame(animate);
+    }
+    
+    v.addEventListener('loadedmetadata', () => { 
+        canvas.width = v.clientWidth; canvas.height = v.clientHeight; 
+        animate(); 
+    });
 </script>
 </body>
 </html>
